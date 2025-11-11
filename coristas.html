@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coristas - Sistema Coral</title>
+    <link rel="stylesheet" href="coristas.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>Sistema Coral</h1>
+        <nav>
+            <ul>
+                <li><a href="coristas.html"><span class="material-icons">group</span> Coristas</a></li>
+                <li><a href="musicos.html"><span class="material-icons">music_note</span> Músicos</a></li>
+                <li><a href="agenda.html"><span class="material-icons">event</span> Agenda</a></li>
+                <li><a href="presencas.html"><span class="material-icons">check_circle</span> Presenças</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section>
+            <h2>Coristas</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>Tipo Voz</th>
+                        <th>Ativo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dados -->
+                </tbody>
+            </table>
+            <div class="botoes">
+                <button class="btn primario">Atualizar</button>
+                <button class="btn secundario">Adicionar</button>
+                <button class="btn perigo">Excluir</button>
+            </div>
+        </section>
+         <!-- Modal -->
+<div class="modal" id="modalAdicionar">
+    <div class="modal-content">
+        <h2>Adicionar Corista</h2>
+        <form>
+            <label for="nome">Nome:</label>
+            <input type="text" id="nome" placeholder="Digite o nome">
+
+            <label for="tipoVoz">Tipo de voz:</label>
+            <input type="text" id="tipoVoz" placeholder="Digite o tipo de voz">
+
+            <div class="checkbox">
+                <input type="checkbox" id="ativo">
+                <label for="ativo">Ativo</label>
+            </div>
+
+            <div class="modal-buttons">
+                <button type="submit" class="btn primario">Salvar</button>
+                <button type="button" class="btn secundario" onclick="fecharModal()">Cancelar</button>
+            </div>
+        </form>
+    </div>
+
+    </main>
+
+    
+</body>
+</html>
