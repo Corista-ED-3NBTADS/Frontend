@@ -33,7 +33,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Dados -->
+                    
                 </tbody>
             </table>
             <div class="botoes">
@@ -42,31 +42,53 @@
                 <button class="btn perigo">Excluir</button>
             </div>
         </section>
-         <!-- Modal -->
+        
+        
 <div class="modal" id="modalAdicionar">
     <div class="modal-content">
-        <h2>Adicionar Corista</h2>
-        <form>
-            <label for="nome">Nome:</label>
-            <input type="text" id="nome" placeholder="Digite o nome">
-
-            <label for="tipoVoz">Tipo de voz:</label>
-            <input type="text" id="tipoVoz" placeholder="Digite o tipo de voz">
-
-            <div class="checkbox">
-                <input type="checkbox" id="ativo">
-                <label for="ativo">Ativo</label>
-            </div>
-
-            <div class="modal-buttons">
-                <button type="submit" class="btn primario">Salvar</button>
-                <button type="button" class="btn secundario" onclick="fecharModal()">Cancelar</button>
-            </div>
-        </form>
+      <span class="close" onclick="fecharModal()">&times;</span>
+      <h2>Adicionar Corista</h2>
+      <form>
+        <label for="nome">Nome:</label>
+        <input type="text" id="nome" placeholder="Digite o nome">
+  
+        <label for="tipoVoz">Tipo de voz:</label>
+        <input type="text" id="tipoVoz" placeholder="Digite o tipo de voz">
+  
+        <div class="checkbox">
+          <input type="checkbox" id="ativo">
+          <label for="ativo">Ativo</label>
+        </div>
+  
+        <div class="modal-buttons">
+          <button type="submit" class="btn primario">Salvar</button>
+          <button type="button" class="btn cancelar" onclick="fecharModal()">Cancelar</button>
+        </div>
+      </form>
     </div>
+  </div>
+  
 
     </main>
 
-    
+    <script>
+        const modal = document.getElementById('modalAdicionar');
+        const btnAdicionar = document.querySelector('.btn.secundario');
+      
+        btnAdicionar.addEventListener('click', () => {
+          modal.style.display = 'flex';
+        });
+      
+        function fecharModal() {
+          modal.style.display = 'none';
+        }
+      
+        window.onclick = function(event) {
+          if (event.target === modal) {
+            fecharModal();
+          }
+        };
+      </script>
+      
 </body>
 </html>

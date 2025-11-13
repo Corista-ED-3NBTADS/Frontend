@@ -14,7 +14,7 @@
             <ul>
                 <li><a href="coristas.html"><span class="material-icons">group</span> Coristas</a></li>
                 <li><a href="musicos.html"><span class="material-icons">music_note</span> Músicos</a></li>
-               material-icons">event</span> Agenda</a></li>
+                <li><a href="agenda.html"><span class="material-icons">event</span> Agenda</a></li>
                 <li><a href="presencas.html"><span class="material-icons">check_circle</span> Presenças</a></li>
             </ul>
         </nav>
@@ -43,5 +43,63 @@
             </div>
         </section>
     </main>
+
+    <div class="modal" id="modalMusico">
+        <div class="modal-content">
+            <span class="close" onclick="fecharModalMusico()">&times;</span>
+            <h2>Adicionar Músico</h2>
+    
+            <form id="formMusico">
+                <label for="nomeMusico">Nome:</label>
+                <input type="text" id="nomeMusico" placeholder="Digite o nome">
+    
+                <label for="instrumentoMusico">Instrumento:</label>
+                <input type="text" id="instrumentoMusico" placeholder="Digite o instrumento">
+    
+                <div class="checkbox">
+                    <input type="checkbox" id="ativoMusico">
+                    <label for="ativoMusico">Ativo</label>
+                </div>
+    
+                <div class="modal-buttons">
+                    <button type="submit" class="btn primario">Salvar</button>
+                    <button type="button" class="btn cancelar" onclick="fecharModalMusico()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        const modalMusico = document.getElementById("modalMusico");
+        const btnAdicionarMusico = document.querySelector(".btn.secundario");
+    
+        
+        btnAdicionarMusico.addEventListener("click", () => {
+            modalMusico.style.display = "flex";
+        });
+    
+        
+        function fecharModalMusico() {
+            modalMusico.style.display = "none";
+        }
+    
+        
+        window.onclick = function(e) {
+            if (e.target === modalMusico) fecharModalMusico();
+        };
+    
+        
+        document.getElementById("formMusico").addEventListener("submit", function(e) {
+            e.preventDefault(); 
+    
+            
+            document.getElementById("nomeMusico").value = "";
+            document.getElementById("instrumentoMusico").value = "";
+            document.getElementById("ativoMusico").checked = false;
+    
+            fecharModalMusico();
+        });
+    </script>
+    
 </body>
 </html>

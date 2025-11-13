@@ -141,11 +141,79 @@ th, td {
 }
 
 .checkbox {
-    margin: 10px 0;
+    display: flex;
+    align-items: center;
+    margin: 15px 0;
+    gap: 8px; 
+
 }
+.checkbox label{
+    margin-bottom: 10px;
+}
+
 
 .modal-buttons {
     display: flex;
     justify-content: space-between;
     margin-top: 15px;
 }
+
+
+
+.modal-content .btn {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  
+  .modal-content .btn.primario {
+    background-color: #480b6e;
+    color: white;
+  }
+  
+  .modal-content .btn.cancelar {
+    background-color: #ccc;
+    color: #333;
+  }
+  
+  .modal-content .btn.primario:hover {
+    background-color: #5e1f8a;
+  }
+  
+  .modal-content .btn.cancelar:hover {
+    background-color: #b5b5b5;
+  }
+  
+  .modal-content input{
+    outline: none;
+    border: none;
+  }
+
+  .close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 22px;
+    color: #480b6e;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+
+  .close:hover {
+    color: #6a1b9a;
+  }
+  
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
