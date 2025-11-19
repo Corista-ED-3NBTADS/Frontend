@@ -25,40 +25,40 @@
     <section>
         <h2>Agenda</h2>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Data</th>
-                    <th>Local</th>
-                    <th>Descrição</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Dados dinâmicos -->
-            </tbody>
-        </table>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Data</th>
+                        <th>Local</th>
+                        <th>Descrição</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+        </div>
 
         <div class="botoes">
-            <button class="btn primario">Atualizar</button>
+            <button class="btn primario" id="btnAtualizar">Atualizar</button>
             <button class="btn secundario" id="abrirModalAgenda">Adicionar</button>
-            <button class="btn perigo">Excluir</button>
+            <button class="btn secundario" id="abrirModalEnvolvimento" style="background-color:#4A148C; color: white;">Envolver</button> <button class="btn perigo" id="btnExcluir">Excluir</button>
         </div>
     </section>
 </main>
 
-<!-- ✅ MODAL DA AGENDA -->
 <div class="modal" id="modalAgenda">
     <div class="modal-content">
         <span class="close" onclick="fecharModalAgenda()">&times;</span>
         <h2>Cadastrar Apresentação</h2>
 
-        <form>
-            <label for="data">Data (DD/MM/AAAA):</label>
-            <input type="text" id="data" placeholder="Ex: 25/12/2025">
+        <form id="formAgenda">
+            <input type="hidden" id="agendaId" value="0"> <label for="data">Data (DD/MM/AAAA):</label>
+            <input type="text" id="data" placeholder="Ex: 25/12/2025" required>
 
             <label for="local">Local:</label>
-            <input type="text" id="local" placeholder="Digite o local">
+            <input type="text" id="local" placeholder="Digite o local" required>
 
             <label for="descricao">Descrição:</label>
             <textarea id="descricao" placeholder="Digite a descrição"></textarea>
@@ -71,24 +71,271 @@
     </div>
 </div>
 
-<!-- SCRIPT -->
+<div class="modal" id="modalEnvolvimento">
+    <div class="modal-content" style="width: 600px;">
+        <span class="close" onclick="fecharModalEnvolvimento()">&times;</span>
+        <h2 id="envolvimentoTitulo">Participantes Envolvidos:</h2>
+        <div id="envolvimentoLists" style="display: flex; justify-content: space-around; margin-top: 20px;">
+            <div style="width: 45%;">
+                <h3>Ativos Disponíveis:</h3>
+                <select multiple id="disponiveisList" style="width: 100%; height: 200px;"></select>
+            </div>
+            <div style="width: 5%; display: flex; flex-direction: column; justify-content: center; gap: 10px;">
+                <button class="btn primario" id="btnTransferir" style="padding: 5px;"> &gt; </button>
+                <button class="btn perigo" id="btnRemover" style="padding: 5px;"> &lt; </button>
+            </div>
+            <div style="width: 45%;">
+                <h3>Envolvidos:</h3>
+                <select multiple id="envolvidosList" style="width: 100%; height: 200px;"></select>
+            </div>
+        </div>
+        <div class="modal-buttons" style="margin-top: 20px;">
+            <button type="button" class="btn primario" id="btnSalvarEnvolvimento">Salvar Envolvimento</button>
+            <button type="button" class="btn cancelar" onclick="fecharModalEnvolvimento()">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+
 <script>
+    const API_BASE = 'http://localhost:7000/api/agenda';
+const API_PARTICIPANTES = 'http://localhost:7000/api/participantes';
+const API_CHECKLIST = 'http://localhost:7000/api/presencas/checklist';
+
     const modalAgenda = document.getElementById("modalAgenda");
-    const btnAbrirAgenda = document.getElementById("abrirModalAgenda");
+    const modalEnvolvimento = document.getElementById("modalEnvolvimento");
+    const formAgenda = document.getElementById('formAgenda');
+    const tableBody = document.querySelector('table tbody');
+    let selectedRow = null;
+    let currentAgendaId = null;
 
-    btnAbrirAgenda.addEventListener("click", () => {
-        modalAgenda.style.display = "flex";
-    });
-
-    function fecharModalAgenda() {
-        modalAgenda.style.display = "none";
+    // Funções utilitárias
+    function fecharModalAgenda() { modalAgenda.style.display = "none"; formAgenda.reset(); document.getElementById('agendaId').value = 0; }
+    function fecharModalEnvolvimento() { modalEnvolvimento.style.display = "none"; }
+    function selectRow(row, id) {
+        if (selectedRow) selectedRow.classList.remove('selected');
+        row.classList.add('selected');
+        selectedRow = row;
+        currentAgendaId = id;
+    }
+    function brDate(sqlDate) {
+        if (!sqlDate) return '';
+        return sqlDate.split('-').reverse().join('/');
+    }
+    function sqlDate(brDate) {
+        const [d, m, y] = brDate.split('/');
+        if (!y || !m || !d || y.length !== 4) return null;
+        return `${y}-${m}-${d}`;
     }
 
-    window.onclick = function(event) {
-        if (event.target === modalAgenda) {
-            fecharModalAgenda();
+    // ----------------------
+    // 1. CARREGAR DADOS AGENDA (GET/LISTAGEM)
+    // ----------------------
+    async function loadData() {
+        tableBody.innerHTML = '';
+        selectedRow = null;
+        currentAgendaId = null;
+        try {
+            const response = await fetch(API_BASE);
+            if (!response.ok) throw new Error('Falha ao carregar dados');
+            const list = await response.json();
+            
+            list.forEach(a => {
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = a.id;
+                row.insertCell().textContent = brDate(a.data);
+                row.insertCell().textContent = a.local;
+                row.insertCell().textContent = a.descricao;
+                row.onclick = () => selectRow(row, a.id);
+                row.ondblclick = () => openEditModal(a);
+            });
+        } catch (e) { console.error('Erro ao carregar Agenda:', e); alert('Erro ao carregar agenda.'); }
+    }
+
+    function openEditModal(data) {
+        document.getElementById('agendaId').value = data.id;
+        document.getElementById('data').value = brDate(data.data);
+        document.getElementById('local').value = data.local;
+        document.getElementById('descricao').value = data.descricao;
+        document.querySelector('#modalAgenda h2').textContent = `Editar Evento ID ${data.id}`;
+        modalAgenda.style.display = 'flex';
+    }
+
+    // ----------------------
+    // 2. SALVAR/EDITAR AGENDA (POST/PUT)
+    // ----------------------
+    formAgenda.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const id = parseInt(document.getElementById('agendaId').value) || 0;
+        const dataTxt = document.getElementById('data').value.trim();
+        const convertedSqlData = sqlDate(dataTxt);
+        
+        if (!convertedSqlData) {
+            alert("Data inválida! Use o formato DD/MM/AAAA.");
+            return;
         }
-    };
+
+        const data = {
+            data: convertedSqlData,
+            local: document.getElementById('local').value.trim(),
+            descricao: document.getElementById('descricao').value.trim()
+        };
+        
+        try {
+            const method = id === 0 ? 'POST' : 'PUT';
+            const url = id === 0 ? API_BASE : `${API_BASE}/${id}`;
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+                fecharModalAgenda();
+                loadData();
+            } else {
+                alert(`Erro ao salvar evento: ${response.statusText}`);
+            }
+        } catch (e) { console.error('Erro ao salvar evento:', e); alert('Erro de conexão ao salvar.'); }
+    });
+
+    // ----------------------
+    // 3. EXCLUIR AGENDA (DELETE)
+    // ----------------------
+    document.getElementById('btnExcluir').addEventListener('click', async function() {
+        if (!selectedRow) { alert("Selecione um registro para excluir."); return; }
+        const id = selectedRow.dataset.id;
+        
+        if (confirm(`Confirma exclusão do Evento ID ${id}? (Isto excluirá todos os vínculos de presença!)`)) {
+            try {
+                const response = await fetch(`${API_BASE}/${id}`, { method: 'DELETE' });
+                if (response.status === 204) {
+                    loadData();
+                } else {
+                    alert("Erro ao excluir. O registro pode estar envolvido em erros de dependência.");
+                }
+            } catch (e) { console.error('Erro ao excluir:', e); alert('Erro de conexão ao excluir.'); }
+        }
+    });
+
+    // ----------------------
+    // 4. GERENCIAMENTO DE ENVOLVIMENTO (REQUISITO AVANÇADO)
+    // ----------------------
+    async function loadEnvolvimentoModal() {
+    if (!currentAgendaId) { alert("Selecione um evento na tabela primeiro."); return; }
+    document.getElementById('envolvimentoTitulo').textContent = `Participantes Envolvidos: ID ${currentAgendaId}`;
+    
+    const disponiveisList = document.getElementById('disponiveisList');
+    const envolvidosList = document.getElementById('envolvidosList');
+    disponiveisList.innerHTML = '';
+    envolvidosList.innerHTML = '';
+
+    try {
+        // --- 1. Pega todos os ativos (Coristas e Músicos) ---
+        const resAtivos = await fetch(`${API_PARTICIPANTES}/ativos`);
+        // VERIFICAÇÃO EXPLÍCITA DE ERRO HTTP
+        if (!resAtivos.ok) throw new Error("Falha HTTP ao listar ativos: Status " + resAtivos.status);
+        
+        let todosAtivos = await resAtivos.json();
+        
+        // DEFESA CONTRA RESPOSTA NÃO-ARRAY (Ex: se o JSON for {...} e não [{...}])
+        if (!Array.isArray(todosAtivos)) {
+            // Transforma o objeto único (como na sua captura de tela) em um array de 1 item.
+            todosAtivos = [todosAtivos];
+        }
+
+
+        // --- 2. Pega os envolvidos atualmente no evento (via checklist) ---
+        const resChecklist = await fetch(`${API_CHECKLIST}/${currentAgendaId}`);
+        if (!resChecklist.ok) throw new Error("Falha HTTP ao listar envolvidos: Status " + resChecklist.status);
+        
+        let envolvidosAtuais = await resChecklist.json();
+        if (!Array.isArray(envolvidosAtuais)) {
+            envolvidosAtuais = [envolvidosAtuais];
+        }
+
+        const envolvidosKeys = new Set(envolvidosAtuais.map(p => `${p.tipo}_${p.id}`));
+        
+        // --- 3. Distribuição dos Itens ---
+        todosAtivos.forEach(p => {
+            const key = `${p.tipo}_${p.id}`;
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = `${p.nome} (${p.tipo})`;
+            option.dataset.id = p.id;
+            option.dataset.tipo = p.tipo;
+            
+            if (envolvidosKeys.has(key)) {
+                envolvidosList.appendChild(option);
+            } else {
+                disponiveisList.appendChild(option);
+            }
+        });
+
+        modalEnvolvimento.style.display = 'flex';
+    } catch (e) { 
+        console.error("Erro no carregamento:", e); 
+        // Exibe o erro mais detalhado que veio do Backend ou do JS
+        alert("Erro ao carregar listas de envolvimento. Detalhe: " + e.message); 
+    }
+}
+
+    // Lógica de transferência entre listas
+    function transferOptions(source, target) {
+        Array.from(source.selectedOptions).forEach(option => {
+            target.appendChild(option);
+        });
+    }
+    document.getElementById('btnTransferir').addEventListener('click', () => { transferOptions(document.getElementById('disponiveisList'), document.getElementById('envolvidosList')); });
+    document.getElementById('btnRemover').addEventListener('click', () => { transferOptions(document.getElementById('envolvidosList'), document.getElementById('disponiveisList')); });
+
+
+    document.getElementById('btnSalvarEnvolvimento').addEventListener('click', async function() {
+        const envolvidosList = document.getElementById('envolvidosList');
+        const listaEnvolvimento = [];
+        
+        Array.from(envolvidosList.options).forEach(option => {
+            const tipo = option.dataset.tipo;
+            const id = parseInt(option.dataset.id);
+            
+            listaEnvolvimento.push({
+                idAgenda: currentAgendaId,
+                idCorista: tipo === 'CORISTA' ? id : null,
+                idMusico: tipo === 'MUSICO' ? id : null
+            });
+        });
+
+        try {
+            const response = await fetch(`${API_BASE}/${currentAgendaId}/participantes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(listaEnvolvimento)
+            });
+
+            if (response.ok) {
+                alert('Envolvimento salvo com sucesso!');
+                fecharModalEnvolvimento();
+            } else {
+                alert(`Erro ao salvar envolvimento: ${response.statusText}`);
+            }
+        } catch (e) { console.error('Erro ao salvar envolvimento:', e); alert('Erro de conexão ao salvar.'); }
+    });
+
+
+    // ----------------------
+    // 5. BOTOES & INICIALIZACAO
+    // ----------------------
+    document.getElementById('abrirModalAgenda').addEventListener('click', () => {
+        document.querySelector('#modalAgenda h2').textContent = 'Cadastrar Apresentação';
+        fecharModalAgenda();
+        modalAgenda.style.display = 'flex';
+    });
+
+    document.getElementById('abrirModalEnvolvimento').addEventListener('click', loadEnvolvimentoModal);
+    document.getElementById('btnAtualizar').addEventListener('click', loadData);
+
+    loadData();
 </script>
 
 </body>

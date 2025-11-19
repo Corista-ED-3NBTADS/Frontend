@@ -23,23 +23,24 @@
     <main>
         <section>
             <h2>Coristas</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nome</th>
-                        <th>Tipo Voz</th>
-                        <th>Ativo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    
-                </tbody>
-            </table>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Tipo Voz</th>
+                            <th>Ativo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
             <div class="botoes">
-                <button class="btn primario">Atualizar</button>
-                <button class="btn secundario">Adicionar</button>
-                <button class="btn perigo">Excluir</button>
+                <button class="btn primario" id="btnAtualizar">Atualizar</button>
+                <button class="btn secundario" id="btnAdd">Adicionar</button>
+                <button class="btn perigo" id="btnExcluir">Excluir</button>
             </div>
         </section>
         
@@ -48,9 +49,11 @@
     <div class="modal-content">
       <span class="close" onclick="fecharModal()">&times;</span>
       <h2>Adicionar Corista</h2>
-      <form>
+      <form id="formCorista">
+        <input type="hidden" id="coristaId" value="0">
+        
         <label for="nome">Nome:</label>
-        <input type="text" id="nome" placeholder="Digite o nome">
+        <input type="text" id="nome" placeholder="Digite o nome" required>
   
         <label for="tipoVoz">Tipo de voz:</label>
         <input type="text" id="tipoVoz" placeholder="Digite o tipo de voz">
@@ -70,25 +73,130 @@
   
 
     </main>
+    
+<script>
+    const API_BASE = 'http://localhost:7000/api/coristas';
+    const modal = document.getElementById('modalAdicionar');
+    const formCorista = document.getElementById('formCorista');
+    const tableBody = document.querySelector('table tbody');
+    let selectedRow = null;
 
-    <script>
-        const modal = document.getElementById('modalAdicionar');
-        const btnAdicionar = document.querySelector('.btn.secundario');
-      
-        btnAdicionar.addEventListener('click', () => {
-          modal.style.display = 'flex';
-        });
-      
-        function fecharModal() {
-          modal.style.display = 'none';
-        }
-      
-        window.onclick = function(event) {
-          if (event.target === modal) {
-            fecharModal();
-          }
+    // Funções utilitárias
+    function fecharModal() { 
+        modal.style.display = 'none'; 
+        formCorista.reset();
+        document.getElementById('coristaId').value = 0; 
+        document.getElementById('ativo').checked = true;
+    }
+    function selectRow(row, id) {
+        if (selectedRow) selectedRow.classList.remove('selected');
+        row.classList.add('selected');
+        selectedRow = row;
+        selectedRow.dataset.id = id;
+    }
+    function brDate(sqlDate) {
+        if (!sqlDate) return '';
+        return sqlDate.split('-').reverse().join('/');
+    }
+
+    // ----------------------
+    // 1. CARREGAR DADOS (GET)
+    // ----------------------
+    async function loadData() {
+        tableBody.innerHTML = '';
+        selectedRow = null;
+        try {
+            const response = await fetch(API_BASE);
+            if (!response.ok) throw new Error('Falha ao carregar dados');
+            const list = await response.json();
+            
+            list.forEach(c => {
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = c.id;
+                row.insertCell().textContent = c.nome;
+                row.insertCell().textContent = c.tipoVoz;
+                row.insertCell().textContent = c.ativo ? 'Sim' : 'Não';
+                row.onclick = () => selectRow(row, c.id);
+                row.ondblclick = () => openEditModal(c); // Abre edição no double click
+            });
+        } catch (e) { console.error('Erro ao carregar Coristas:', e); alert('Erro ao carregar dados.'); }
+    }
+
+    function openEditModal(data) {
+        document.getElementById('coristaId').value = data.id;
+        document.getElementById('nome').value = data.nome;
+        document.getElementById('tipoVoz').value = data.tipoVoz;
+        document.getElementById('ativo').checked = data.ativo;
+        document.querySelector('#modalAdicionar h2').textContent = `Editar Corista ID ${data.id}`;
+        modal.style.display = 'flex';
+    }
+
+    // ----------------------
+    // 2. SALVAR/EDITAR (POST/PUT)
+    // ----------------------
+    formCorista.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const id = parseInt(document.getElementById('coristaId').value) || 0;
+        const nome = document.getElementById('nome').value.trim();
+        if (nome === "") { alert("Nome obrigatório"); return; }
+        
+        const data = {
+            nome: nome,
+            tipoVoz: document.getElementById('tipoVoz').value.trim(),
+            ativo: document.getElementById('ativo').checked
         };
-      </script>
+        
+        try {
+            const method = id === 0 ? 'POST' : 'PUT';
+            const url = id === 0 ? API_BASE : `${API_BASE}/${id}`;
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+                fecharModal();
+                loadData();
+            } else {
+                const error = await response.text();
+                alert(`Erro ao salvar: ${error}`);
+            }
+        } catch (e) { console.error('Erro ao salvar:', e); alert('Erro de conexão ao salvar.'); }
+    });
+
+    // ----------------------
+    // 3. EXCLUIR (DELETE)
+    // ----------------------
+    document.getElementById('btnExcluir').addEventListener('click', async function() {
+        if (!selectedRow) { alert("Selecione um registro para excluir."); return; }
+        const id = selectedRow.dataset.id;
+        
+        if (confirm(`Tem certeza que deseja excluir o Corista ID ${id}?`)) {
+            try {
+                const response = await fetch(`${API_BASE}/${id}`, { method: 'DELETE' });
+                if (response.status === 204) {
+                    loadData();
+                } else {
+                    alert("Erro ao excluir. O registro pode estar envolvido em eventos.");
+                }
+            } catch (e) { console.error('Erro ao excluir:', e); alert('Erro de conexão ao excluir.'); }
+        }
+    });
+
+    // ----------------------
+    // 4. BOTOES & INICIALIZACAO
+    // ----------------------
+    document.getElementById('btnAdd').addEventListener('click', () => {
+        document.querySelector('#modalAdicionar h2').textContent = 'Adicionar Corista';
+        fecharModal(); // Garante o reset do formulário
+        modal.style.display = 'flex';
+    });
+    document.getElementById('btnAtualizar').addEventListener('click', loadData);
+
+    loadData();
+</script>
       
 </body>
 </html>

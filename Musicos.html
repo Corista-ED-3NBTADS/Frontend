@@ -23,35 +23,37 @@
     <main>
         <section>
             <h2>Músicos</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nome</th>
-                        <th>Instrumento</th>
-                        <th>Ativo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Dados dinâmicos -->
-                </tbody>
-            </table>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Instrumento</th>
+                            <th>Ativo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
             <div class="botoes">
-                <button class="btn primario">Atualizar</button>
-                <button class="btn secundario">Adicionar</button>
-                <button class="btn perigo">Excluir</button>
+                <button class="btn primario" id="btnAtualizar">Atualizar</button>
+                <button class="btn secundario" id="btnAdd">Adicionar</button>
+                <button class="btn perigo" id="btnExcluir">Excluir</button>
             </div>
         </section>
     </main>
 
     <div class="modal" id="modalMusico">
         <div class="modal-content">
-            <span class="close" onclick="fecharModalMusico()">&times;</span>
+            <span class="close" onclick="fecharModal()">&times;</span>
             <h2>Adicionar Músico</h2>
     
             <form id="formMusico">
+                <input type="hidden" id="musicoId" value="0">
                 <label for="nomeMusico">Nome:</label>
-                <input type="text" id="nomeMusico" placeholder="Digite o nome">
+                <input type="text" id="nomeMusico" placeholder="Digite o nome" required>
     
                 <label for="instrumentoMusico">Instrumento:</label>
                 <input type="text" id="instrumentoMusico" placeholder="Digite o instrumento">
@@ -63,42 +65,130 @@
     
                 <div class="modal-buttons">
                     <button type="submit" class="btn primario">Salvar</button>
-                    <button type="button" class="btn cancelar" onclick="fecharModalMusico()">Cancelar</button>
+                    <button type="button" class="btn cancelar" onclick="fecharModal()">Cancelar</button>
                 </div>
             </form>
         </div>
     </div>
     
     <script>
-        const modalMusico = document.getElementById("modalMusico");
-        const btnAdicionarMusico = document.querySelector(".btn.secundario");
-    
-        
-        btnAdicionarMusico.addEventListener("click", () => {
-            modalMusico.style.display = "flex";
-        });
-    
-        
-        function fecharModalMusico() {
-            modalMusico.style.display = "none";
+        const API_BASE = 'http://localhost:7000/api/musicos';
+        const modal = document.getElementById('modalMusico');
+        const formMusico = document.getElementById('formMusico');
+        const tableBody = document.querySelector('table tbody');
+        let selectedRow = null;
+
+        // Funções utilitárias (adaptadas para Musico)
+        function fecharModal() { 
+            modal.style.display = 'none'; 
+            formMusico.reset();
+            document.getElementById('musicoId').value = 0; 
+            document.getElementById('ativoMusico').checked = true;
         }
-    
-        
-        window.onclick = function(e) {
-            if (e.target === modalMusico) fecharModalMusico();
-        };
-    
-        
-        document.getElementById("formMusico").addEventListener("submit", function(e) {
-            e.preventDefault(); 
-    
+        function selectRow(row, id) {
+            if (selectedRow) selectedRow.classList.remove('selected');
+            row.classList.add('selected');
+            selectedRow = row;
+            selectedRow.dataset.id = id;
+        }
+
+        // ----------------------
+        // 1. CARREGAR DADOS (GET)
+        // ----------------------
+        async function loadData() {
+            tableBody.innerHTML = '';
+            selectedRow = null;
+            try {
+                const response = await fetch(API_BASE);
+                if (!response.ok) throw new Error('Falha ao carregar dados');
+                const list = await response.json();
+                
+                list.forEach(m => {
+                    const row = tableBody.insertRow();
+                    row.insertCell().textContent = m.id;
+                    row.insertCell().textContent = m.nome;
+                    row.insertCell().textContent = m.instrumento;
+                    row.insertCell().textContent = m.ativo ? 'Sim' : 'Não';
+                    row.onclick = () => selectRow(row, m.id);
+                    row.ondblclick = () => openEditModal(m);
+                });
+            } catch (e) { console.error('Erro ao carregar Músicos:', e); alert('Erro ao carregar dados.'); }
+        }
+
+        function openEditModal(data) {
+            document.getElementById('musicoId').value = data.id;
+            document.getElementById('nomeMusico').value = data.nome;
+            document.getElementById('instrumentoMusico').value = data.instrumento;
+            document.getElementById('ativoMusico').checked = data.ativo;
+            document.querySelector('#modalMusico h2').textContent = `Editar Músico ID ${data.id}`;
+            modal.style.display = 'flex';
+        }
+
+        // ----------------------
+        // 2. SALVAR/EDITAR (POST/PUT)
+        // ----------------------
+        formMusico.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const id = parseInt(document.getElementById('musicoId').value) || 0;
+            const nome = document.getElementById('nomeMusico').value.trim();
+            if (nome === "") { alert("Nome obrigatório"); return; }
             
-            document.getElementById("nomeMusico").value = "";
-            document.getElementById("instrumentoMusico").value = "";
-            document.getElementById("ativoMusico").checked = false;
-    
-            fecharModalMusico();
+            const data = {
+                nome: nome,
+                instrumento: document.getElementById('instrumentoMusico').value.trim(),
+                ativo: document.getElementById('ativoMusico').checked
+            };
+            
+            try {
+                const method = id === 0 ? 'POST' : 'PUT';
+                const url = id === 0 ? API_BASE : `${API_BASE}/${id}`;
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    fecharModal();
+                    loadData();
+                } else {
+                    const error = await response.text();
+                    alert(`Erro ao salvar: ${error}`);
+                }
+            } catch (e) { console.error('Erro ao salvar:', e); alert('Erro de conexão ao salvar.'); }
         });
+
+        // ----------------------
+        // 3. EXCLUIR (DELETE)
+        // ----------------------
+        document.getElementById('btnExcluir').addEventListener('click', async function() {
+            if (!selectedRow) { alert("Selecione um registro para excluir."); return; }
+            const id = selectedRow.dataset.id;
+            
+            if (confirm(`Tem certeza que deseja excluir o Músico ID ${id}?`)) {
+                try {
+                    const response = await fetch(`${API_BASE}/${id}`, { method: 'DELETE' });
+                    if (response.status === 204) {
+                        loadData();
+                    } else {
+                        alert("Erro ao excluir. O registro pode estar envolvido em eventos.");
+                    }
+                } catch (e) { console.error('Erro ao excluir:', e); alert('Erro de conexão ao excluir.'); }
+            }
+        });
+
+        // ----------------------
+        // 4. BOTOES & INICIALIZACAO
+        // ----------------------
+        document.getElementById('btnAdd').addEventListener('click', () => {
+            document.querySelector('#modalMusico h2').textContent = 'Adicionar Músico';
+            fecharModal();
+            modal.style.display = 'flex';
+        });
+        document.getElementById('btnAtualizar').addEventListener('click', loadData);
+
+        loadData();
     </script>
     
 </body>

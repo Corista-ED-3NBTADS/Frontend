@@ -6,6 +6,18 @@
     <title>Presenças - Sistema Coral</title>
     <link rel="stylesheet" href="presenca.css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        .checklist-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px dotted #ccc;
+        }
+        .checklist-item:last-child { border-bottom: none; }
+        .checklist-item strong { width: 300px; }
+        .checklist-status { font-weight: bold; margin-right: 15px; }
+    </style>
 </head>
 <body>
     <header>
@@ -23,18 +35,162 @@
     <main>
         <section>
             <h2>Presenças</h2>
-            <div class="presenca-form">
+            <div class="presenca-form" style="display: flex; align-items: center; gap: 20px;">
                 <label for="agendaSelect">Selecione Agenda:</label>
-                <select id="agendaSelect">
-                    <option>Agenda 1</option>
-                    <option>Agenda 2</option>
-                </select>
-                <button class="btn primario">Carregar Coristas</button>
+                <select id="agendaSelect" style="padding: 8px; width: 250px;"></select>
+                <button class="btn primario" id="btnLoadChecklist">Carregar Participantes</button>
             </div>
-            <div class="botoes">
-                <button class="btn primario">Salvar Presenças</button>
+            
+            <hr style="margin-top: 20px;">
+            
+            <div id="checklistContainer" style="margin-top: 20px; min-height: 100px;">
+                <p>Selecione um evento e clique em "Carregar Participantes" para iniciar a chamada.</p>
+            </div>
+            
+            <div class="botoes" style="margin-top: 30px;">
+                <button class="btn primario" id="btnSalvarPresencas" style="width: 250px;">Salvar Presenças</button>
             </div>
         </section>
     </main>
+    
+<script>
+    const API_AGENDA = 'http://localhost:7000/api/agenda';
+    const API_CHECKLIST = 'http://localhost:7000/api/presencas/checklist';
+    const API_MARCAR = 'http://localhost:7000/api/presencas/marcar';
+
+    const agendaSelect = document.getElementById('agendaSelect');
+    const checklistContainer = document.getElementById('checklistContainer');
+    const btnLoadChecklist = document.getElementById('btnLoadChecklist');
+    const btnSalvarPresencas = document.getElementById('btnSalvarPresencas');
+    
+    // ----------------------
+    // 1. CARREGAR AGENDAS (GET)
+    // ----------------------
+    async function loadAgendas() {
+        agendaSelect.innerHTML = '<option value="">Selecione um evento</option>';
+        try {
+            const response = await fetch(API_AGENDA);
+            const agendas = await response.json();
+            agendas.forEach(a => {
+                const option = document.createElement('option');
+                option.value = a.id;
+                option.textContent = `${a.id} - ${a.local} (${a.data})`;
+                agendaSelect.appendChild(option);
+            });
+        } catch (e) { console.error('Erro ao carregar Agendas:', e); alert('Erro ao carregar agenda.'); }
+    }
+
+    // ----------------------
+    // 2. CARREGAR CHECKLIST (GET - Coristas E Músicos)
+    // ----------------------
+    btnLoadChecklist.addEventListener('click', async function() {
+        const idAgenda = agendaSelect.value;
+        if (!idAgenda) { alert("Selecione uma agenda primeiro."); return; }
+
+        checklistContainer.innerHTML = 'Carregando...';
+        try {
+            const response = await fetch(`${API_CHECKLIST}/${idAgenda}`);
+            const participantesChecklist = await response.json(); 
+            renderChecklist(participantesChecklist);
+        } catch (e) { console.error('Erro ao carregar Checklist:', e); checklistContainer.innerHTML = 'Erro ao carregar participantes.'; }
+    });
+
+    function renderChecklist(data) {
+        checklistContainer.innerHTML = '';
+        const list = document.createElement('div');
+        list.style.padding = '10px';
+        
+        data.forEach(p => {
+            const statusText = p.presente ? 'PRESENTE' : 'AUSENTE';
+            const statusColor = p.presente ? 'green' : '#e74c3c'; // Perigo
+            
+            const item = document.createElement('div');
+            item.className = 'checklist-item';
+            item.dataset.id = p.id;
+            item.dataset.tipo = p.tipo;
+            item.dataset.presente = p.presente;
+
+            // Display
+            item.innerHTML = `
+                <strong>[${p.tipo}] ${p.nome}</strong>
+                <div style="display: flex; align-items: center;">
+                    <span class="checklist-status" style="color: ${statusColor};">${statusText}</span>
+                    <button class="btn btn-marcar-presenca" data-action="true" style="background-color: green; color: white; margin-right: 5px;">Presente</button>
+                    <button class="btn btn-marcar-falta" data-action="false" style="background-color: #e74c3c; color: white;">Ausente</button>
+                </div>
+            `;
+            list.appendChild(item);
+        });
+        
+        // Adiciona listener para marcar P/A no item
+        list.addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-marcar-presenca') || e.target.classList.contains('btn-marcar-falta')) {
+                const btn = e.target;
+                const listItem = btn.closest('.checklist-item');
+                const newStatus = btn.dataset.action === 'true';
+                
+                listItem.dataset.presente = newStatus;
+                
+                const badge = listItem.querySelector('.checklist-status');
+                badge.textContent = newStatus ? 'PRESENTE' : 'AUSENTE';
+                badge.style.color = newStatus ? 'green' : '#e74c3c';
+            }
+        });
+        
+        checklistContainer.appendChild(list);
+    }
+
+
+    // ----------------------
+    // 3. SALVAR PRESENÇAS (POST - Salva Corista E Músico)
+    // ----------------------
+    btnSalvarPresencas.addEventListener('click', async function() {
+        const idAgenda = agendaSelect.value;
+        if (!idAgenda) { alert("Selecione uma agenda."); return; }
+        
+        const items = checklistContainer.querySelectorAll('.checklist-item');
+        let sucesso = true;
+        
+        for (const item of items) {
+            const idParticipante = parseInt(item.dataset.id);
+            const tipo = item.dataset.tipo;
+            const presente = item.dataset.presente === 'true';
+            
+            // Envia POST para o endpoint unificado
+            const data = {
+                idParticipante: idParticipante,
+                tipo: tipo,
+                idAgenda: parseInt(idAgenda),
+                presente: presente
+            };
+
+            try {
+                const response = await fetch(API_MARCAR, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) {
+                     sucesso = false;
+                     console.error(`Falha ao salvar ${tipo} ID ${idParticipante}: ${response.statusText}`);
+                }
+            } catch (e) {
+                sucesso = false;
+                console.error(`Erro de rede ao salvar ${tipo} ID ${idParticipante}:`, e);
+            }
+        }
+        
+        if (sucesso) {
+            alert("Presenças salvas com sucesso!");
+        } else {
+            alert("Ocorreu um erro ao salvar algumas presenças. Verifique o console.");
+        }
+        
+        btnLoadChecklist.click(); // Recarrega o checklist para ver o status atualizado do DB
+    });
+
+    // Inicialização
+    loadAgendas();
+</script>
 </body>
 </html>

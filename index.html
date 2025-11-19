@@ -16,7 +16,7 @@
         </div>
         <div class="formulario-login">
             <h2>LOGIN</h2>
-            <form>
+            <form id="loginForm">
                 <label for="usuario">Usuário</label>
                 <input type="text" id="usuario" name="usuario" required>
 <p></p>
@@ -27,5 +27,31 @@
             </form>
         </div>
     </div>
+
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const usuario = document.getElementById('usuario').value;
+        const senha = document.getElementById('senha').value;
+        
+        try {
+            const response = await fetch('http://localhost:7000/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: usuario, password: senha })
+            });
+
+            if (response.ok && response.status === 200) {
+                window.location.href = 'coristas.html'; 
+            } else {
+                alert('Usuário ou senha inválidos.');
+            }
+        } catch (error) {
+            console.error('Erro de rede:', error);
+            alert('Erro ao conectar-se ao servidor.');
+        }
+    });
+</script>
+
 </body>
 </html>
