@@ -45,6 +45,3 @@ Como o projeto não utiliza frameworks que exigem compilação (como React ou An
 * **Cor Primária**: Roxo Escuro (`#480b6e`) - Usado no header e botões principais.
 * **Cor de Fundo**: Lilás Claro (`#f3e8ff`) - Fundo das páginas.
 * **Fontes**: *Bellefair* (Google Fonts).
-
----
-Desenvolvido para a disciplina de Estrutura de Dados - 3NBTADS.
